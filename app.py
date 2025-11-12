@@ -5,7 +5,6 @@ import os
 from PIL import Image, ImageEnhance
 import matplotlib.pyplot as plt
 import qrcode
-from random import randint, uniform, choice
 
 # ===================== 页面配置 =====================
 st.set_page_config(page_title="诚信教育案例 - 荔枝混装实验", layout="wide")
@@ -13,8 +12,7 @@ st.title("🍒 诚信教育案例：30% 混装荔枝可视化实验")
 st.markdown(
     """
     **教学目标：**  
-    学生通过上传不同类型荔枝图片，观察“30%混装”带来的视觉影响，  
-    从中体会诚信在国际贸易中的重要性。
+    通过上传不同类型荔枝图片，观察“30%混装”带来的视觉变化，理解诚信在国际贸易中的重要性。
     """
 )
 
@@ -38,6 +36,7 @@ with left_col:
         file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
         img.save(file_path)
 
+        # 保存上传记录
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"{uploaded_file.name},{type_choice}\n")
 
@@ -46,7 +45,7 @@ with left_col:
     st.divider()
     st.subheader("📲 扫码参与上传（课堂展示用）")
 
-    qr_url = "https://lychee-demo-yourname.streamlit.app"  # 部署后改成你自己的链接
+    qr_url = "https://lychee-demo-yourname.streamlit.app"  # 部署后改成你自己的 Streamlit 链接
     qr_img = qrcode.make(qr_url).convert("RGB")
     qr_pil = Image.new("RGB", qr_img.size, "white")
     qr_pil.paste(qr_img)
@@ -74,58 +73,36 @@ with right_col:
 
             st.markdown(f"**当前已上传总数：{total} 张图片**")
 
-            # --- 生成混装叠加效果 ---
-            canvas_size = 800
-            mixed = Image.new("RGBA", (canvas_size, canvas_size), (255, 255, 255, 255))
-
-            # 按比例确定混合数量（30% 其他类型）
-            ratio = 0.3
-            num_other = max(1, int(total * ratio))
-            num_feizixiao = max(1, total - num_other)
-
-            # 分组路径
+            # 分类图片
             group_fx = df[df["type"] == "妃子笑"]["filename"].tolist()
             group_other = df[df["type"] == "其他类型"]["filename"].tolist()
 
-            selected_fx = [choice(group_fx)] * num_feizixiao if group_fx else []
-            selected_ot = [choice(group_other)] * num_other if group_other else []
+            if len(group_fx) > 0 and len(group_other) > 0:
+                # 按比例混合图像
+                img_fx = [Image.open(os.path.join(UPLOAD_DIR, f)).resize((400, 400)).convert("RGB") for f in group_fx]
+                img_ot = [Image.open(os.path.join(UPLOAD_DIR, f)).resize((400, 400)).convert("RGB") for f in group_other]
 
-            selected_files = selected_fx + selected_ot
-            np.random.shuffle(selected_files)
+                # 计算平均图像
+                def average_image(imgs):
+                    arrs = [np.array(i, dtype=np.float32) for i in imgs]
+                    return np.mean(arrs, axis=0)
 
-            for img_path in selected_files:
-                try:
-                    img = Image.open(os.path.join(UPLOAD_DIR, img_path)).convert("RGBA")
+                avg_fx = average_image(img_fx)
+                avg_ot = average_image(img_ot)
 
-                    # 随机缩放、旋转
-                    scale = uniform(0.4, 1.0)
-                    new_size = (int(img.width * scale), int(img.height * scale))
-                    img = img.resize(new_size)
-                    img = img.rotate(uniform(-20, 20), expand=True)
+                # 混合比例：70% 妃子笑 + 30% 其他类型
+                mixed_arr = avg_fx * 0.7 + avg_ot * 0.3
+                mixed_arr = np.clip(mixed_arr, 0, 255).astype(np.uint8)
+                mixed_img = Image.fromarray(mixed_arr)
 
-                    # 类别颜色区分
-                    if img_path in selected_ot:
-                        enhancer = ImageEnhance.Color(img)
-                        img = enhancer.enhance(0.6)  # 让“其他类型”偏灰红，区分明显
+                st.image(mixed_img, caption="🍒 模拟混装荔枝效果（70% 妃子笑 + 30% 其他）")
 
-                    # 随机透明度
-                    alpha = img.split()[3]
-                    alpha = alpha.point(lambda p: p * uniform(0.5, 0.9))
-                    img.putalpha(alpha)
-
-                    # 随机位置
-                    x = randint(0, canvas_size - new_size[0])
-                    y = randint(0, canvas_size - new_size[1])
-
-                    mixed.alpha_composite(img, (x, y))
-
-                except Exception as e:
-                    print("跳过图片:", img_path, e)
-
-            st.image(mixed.convert("RGB"), caption="🍒 模拟混装荔枝效果（30% 其他类型）")
+            elif len(group_fx) == 0:
+                st.warning("请先上传一些【妃子笑】图片")
+            elif len(group_other) == 0:
+                st.warning("请先上传一些【其他类型】图片")
 
         else:
             st.info("等待学生上传图片中……")
     else:
         st.info("等待学生上传图片中……")
-
