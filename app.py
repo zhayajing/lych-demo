@@ -74,19 +74,6 @@ with right_col:
             # ----- 上传统计 -----
             st.markdown(f"**当前已上传总数：{total} 张图片**")
 
-            # ----- 饼图 -----
-            fig1, ax1 = plt.subplots()
-            ax1.pie(counts, labels=counts.index, autopct=lambda p: f"{p:.1f}%", startangle=90)
-            ax1.set_title("荔枝类型比例（实时更新）")
-            st.pyplot(fig1)
-
-            # ----- 条形图 -----
-            fig2, ax2 = plt.subplots()
-            ax2.bar(counts.index, counts.values, color=["#ff4b4b", "#8bc34a"])
-            ax2.set_ylabel("上传数量")
-            ax2.set_title("各类型上传数量统计")
-            st.pyplot(fig2)
-
             # ----- 拼贴展示 -----
             imgs = []
             for file in os.listdir(UPLOAD_DIR):
@@ -107,3 +94,4 @@ with right_col:
             st.info("等待学生上传图片中……")
     else:
         st.info("等待学生上传图片中……")
+
