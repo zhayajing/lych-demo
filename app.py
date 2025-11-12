@@ -2,47 +2,41 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 import qrcode
 import random
 
-# ============ 页面设置 ============
-st.set_page_config(page_title="荔枝混装实验", layout="wide")
-st.title("🍒 荔枝混装实验（70% 妃子笑 + 30% 其他）")
+# ================== 页面设置 ==================
+st.set_page_config(page_title="荔枝智能混装实验", layout="wide")
+st.title("🍒 荔枝智能混装实验（70% 妃子笑 + 30% 其他）")
 st.markdown(
-    """
-    上传不同类型的荔枝图片，系统会自动生成一张“混装果堆图”，  
-    展示两种荔枝混放后的实际视觉效果。
-    """
+    "上传不同类型的荔枝图片，系统将智能生成一张真实果堆照片，模拟混装效果。"
 )
 
 UPLOAD_DIR = "uploads"
 LOG_FILE = "upload_log.csv"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# ============ 页面布局 ============
 left, right = st.columns([1, 2])
 
 # ---------------- 左侧上传区 ----------------
 with left:
     st.subheader("📲 上传入口")
-
-    uploaded_file = st.file_uploader("请上传荔枝图片（妃子笑 / 其他类型）", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("上传荔枝图片", type=["jpg", "jpeg", "png"])
     type_choice = st.radio("请选择荔枝类型：", ["妃子笑", "其他类型"])
 
-    if uploaded_file is not None:
-        img = Image.open(uploaded_file).convert("RGB")
-        file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-        img.save(file_path)
+    if uploaded_file:
+        img = Image.open(uploaded_file).convert("RGBA")
+        img.save(os.path.join(UPLOAD_DIR, uploaded_file.name))
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"{uploaded_file.name},{type_choice}\n")
-        st.success("✅ 上传成功！右侧混装图将自动更新。")
+        st.success("✅ 上传成功！右侧效果图将自动更新。")
 
     st.divider()
-    st.subheader("📷 学生扫码上传")
+    st.subheader("📷 扫码上传")
     qr_url = "https://lychee-demo-yourname.streamlit.app"
     qr_img = qrcode.make(qr_url).convert("RGB")
-    st.image(qr_img, caption="扫码上传入口")
+    st.image(qr_img, caption="学生扫码上传")
 
     st.divider()
     if st.button("🔄 重置所有数据"):
@@ -50,11 +44,11 @@ with left:
             os.remove(LOG_FILE)
         for f in os.listdir(UPLOAD_DIR):
             os.remove(os.path.join(UPLOAD_DIR, f))
-        st.warning("✅ 已清空所有上传记录与图片。")
+        st.warning("✅ 数据已清空，可重新开始实验。")
 
 # ---------------- 右侧展示区 ----------------
 with right:
-    st.subheader("🍒 混装荔枝果堆效果图")
+    st.subheader("🍒 智能混装果堆图")
 
     if os.path.exists(LOG_FILE):
         df = pd.read_csv(LOG_FILE, names=["filename", "type"])
@@ -63,35 +57,48 @@ with right:
             group_other = df[df["type"] == "其他类型"]["filename"].tolist()
 
             if group_fx and group_other:
-                # 取 70% 妃子笑 + 30% 其他
-                total_tiles = 100
-                n_fx = int(total_tiles * 0.7)
-                n_other = total_tiles - n_fx
+                # 70% 妃子笑 + 30% 其他
+                total = 25
+                n_fx = int(total * 0.7)
+                n_ot = total - n_fx
 
                 fx_samples = random.choices(group_fx, k=n_fx)
-                ot_samples = random.choices(group_other, k=n_other)
+                ot_samples = random.choices(group_other, k=n_ot)
                 all_samples = fx_samples + ot_samples
                 random.shuffle(all_samples)
 
-                # 拼接成“果堆图”
-                tile_size = 100
-                grid = 10
-                collage = Image.new("RGB", (tile_size * grid, tile_size * grid))
+                # 创建画布
+                canvas_size = 800
+                canvas = Image.new("RGBA", (canvas_size, canvas_size), (255, 255, 255, 255))
 
-                for idx, fname in enumerate(all_samples):
+                for i, fname in enumerate(all_samples):
                     try:
-                        img = Image.open(os.path.join(UPLOAD_DIR, fname)).convert("RGB")
-                        img = img.resize((tile_size, tile_size))
-                        x = (idx % grid) * tile_size
-                        y = (idx // grid) * tile_size
-                        collage.paste(img, (x, y))
-                    except Exception as e:
-                        print("跳过", fname, e)
+                        img = Image.open(os.path.join(UPLOAD_DIR, fname)).convert("RGBA")
+                        # 缩放荔枝
+                        scale = random.uniform(0.25, 0.4)
+                        new_size = (int(img.width * scale), int(img.height * scale))
+                        img = img.resize(new_size, Image.LANCZOS)
 
-                st.image(collage, caption="混装荔枝果堆图（70% 妃子笑 + 30% 其他类型）")
+                        # 随机羽化边缘（让融合更自然）
+                        mask = Image.new("L", img.size, 255)
+                        feather = 40
+                        mask = ImageOps.expand(mask, border=-feather)
+                        mask = mask.resize(img.size, Image.LANCZOS)
+                        img.putalpha(mask)
+
+                        # 随机位置放置
+                        x = random.randint(0, canvas_size - new_size[0])
+                        y = random.randint(0, canvas_size - new_size[1])
+
+                        canvas.alpha_composite(img, (x, y))
+                    except Exception as e:
+                        print("跳过图片:", fname, e)
+
+                result = canvas.convert("RGB")
+                st.image(result, caption="智能混装荔枝效果图（自然融合）", use_column_width=True)
             else:
-                st.info("请至少上传一种【妃子笑】和【其他类型】图片。")
+                st.info("请至少上传一张妃子笑和其他类型图片。")
         else:
-            st.info("请上传至少两类荔枝图片。")
+            st.info("请上传至少两类图片。")
     else:
         st.info("等待学生上传图片中……")
