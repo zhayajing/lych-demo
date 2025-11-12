@@ -42,9 +42,13 @@ with left_col:
     st.divider()
     st.subheader("📲 扫码参与上传（课堂展示用）")
 
-    qr_url = "https://lychee-demo-yourname.streamlit.app"  # 部署后替换成你的 Streamlit 链接
+    # ✅ 生成二维码（修复版本）
+    qr_url = "https://lychee-demo-yourname.streamlit.app"  # 部署后改成你的链接
     qr_img = qrcode.make(qr_url)
-    st.image(qr_img, caption="学生扫码上传入口")
+    qr_pil = Image.new("RGB", qr_img.size, "white")
+    qr_pil.paste(qr_img)
+
+    st.image(qr_pil, caption="学生扫码上传入口")
 
 # =======================
 # 右侧：数据展示 + 可视化
