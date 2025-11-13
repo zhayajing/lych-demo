@@ -40,7 +40,7 @@ with left:
 
     st.divider()
     st.subheader("📷 学生扫码上传")
-    qr_url = "https://lychee-demo-yourname.streamlit.app"
+    qr_url = "https://lych-demo-5gk9t8rb34wwy8ofu6euph.streamlit.app"
     qr_img = qrcode.make(qr_url).convert("RGB")
     st.image(qr_img, caption="扫码上传入口")
 
@@ -95,3 +95,4 @@ with right:
             st.info("请上传至少两类荔枝图片。")
     else:
         st.info("等待学生上传图片中……")
+
