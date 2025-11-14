@@ -1,10 +1,12 @@
 streamlit
 pillow
+pillow-heif
 qrcode
-matplotlib
-pandas
 numpy
+pandas
 scikit-learn
 scipy
+matplotlib
+
 
 
