@@ -5,6 +5,10 @@ import os
 from PIL import Image
 import qrcode
 import random
+import pillow_heif
+
+# 注册 HEIF/HEIC 读取插件
+pillow_heif.register_heif_opener()
 
 # ============ 页面设置 ============
 st.set_page_config(page_title="荔枝混装实验", layout="wide")
@@ -27,19 +31,38 @@ left, right = st.columns([1, 2])
 with left:
     st.subheader("📲 上传入口")
 
-    uploaded_file = st.file_uploader("请上传荔枝图片（妃子笑 / 其他类型）", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader(
+        "请上传荔枝图片（妃子笑 / 其他类型）",
+        type=["jpg", "jpeg", "png", "webp", "bmp", "tiff", "heic", "heif"]
+    )
+
     type_choice = st.radio("请选择荔枝类型：", ["妃子笑", "其他类型"])
 
     if uploaded_file is not None:
-        img = Image.open(uploaded_file).convert("RGB")
+        try:
+            # 尝试加载各种格式的图片
+            img = Image.open(uploaded_file).convert("RGB")
+        except Exception as e:
+            st.error(f"❌ 图片无法读取。请换一张。（错误：{e}）")
+            st.stop()
+
+        # 保存图片
         file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
-        img.save(file_path)
+        try:
+            img.save(file_path)
+        except Exception:
+            st.error("❌ 图片保存失败，请重新上传。")
+            st.stop()
+
+        # 记录上传日志
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"{uploaded_file.name},{type_choice}\n")
+
         st.success("✅ 上传成功！右侧混装图将自动更新。")
 
     st.divider()
     st.subheader("📷 学生扫码上传")
+
     qr_url = "https://lych-demo-5gk9t8rb34wwy8ofu6euph.streamlit.app"
     qr_img = qrcode.make(qr_url).convert("RGB")
     st.image(qr_img, caption="扫码上传入口")
